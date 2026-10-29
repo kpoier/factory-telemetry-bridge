@@ -14,6 +14,27 @@ import uuid
 from build import ROOT, archive_bytes, release_files, version_tuple
 
 PORTAL = 'https://mods.factorio.com'
+API_ERROR_CODES = frozenset({
+    'InvalidApiKey', 'InvalidRequest', 'InternalError', 'Forbidden', 'Unknown',
+    'InvalidModRelease', 'InvalidModUpload', 'ModAlreadyExists', 'UnknownMod',
+})
+
+
+def error_code_suffix(payload):
+    """Only documented codes may enter logs; never log server messages."""
+    code = payload.get('error') if isinstance(payload, dict) else None
+    return ' (' + code + ')' if isinstance(code, str) and code in API_ERROR_CODES else ''
+
+
+def operation_name(url):
+    path = urllib.parse.urlsplit(url).path
+    if path == '/api/v2/mods/init_publish':
+        return 'init_publish'
+    if path == '/api/v2/mods/releases/init_upload':
+        return 'init_upload'
+    if path.startswith('/api/mods/'):
+        return 'lookup'
+    return 'upload'
 
 
 class PublishError(Exception):
@@ -52,12 +73,18 @@ class Client:
         except urllib.error.HTTPError as error:
             if missing_ok and error.code == 404:
                 return None
-            raise PublishError('Portal HTTP error ' + str(error.code)) from None
+            try:
+                payload = json.loads(error.read(65_536))
+            except (OSError, ValueError):
+                payload = None
+            raise PublishError('Portal HTTP error ' + str(error.code)
+                               + error_code_suffix(payload) + ' during ' + operation_name(url)) from None
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
             # Do not include exception text: it may contain a signed URL.
             raise PublishError('Portal request failed; check release state before retrying') from None
         if not isinstance(result, dict) or result.get('error'):
-            raise PublishError('Portal returned an error or invalid response')
+            raise PublishError('Portal returned an error or invalid response'
+                               + error_code_suffix(result) + ' during ' + operation_name(url))
         return result
 
 

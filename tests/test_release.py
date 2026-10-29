@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
@@ -176,6 +177,28 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(publish.PublishError):
             self.run_publish(client)
         self.assertEqual(len(client.calls), 1)
+
+    def test_http_error_diagnostics_never_echo_response_or_credentials(self):
+        for code in ('InvalidApiKey', 'InvalidRequest', 'Forbidden', 'sensitive-dummy-value'):
+            body = json.dumps({'error': code, 'message': 'private-response-value',
+                               'upload_url': 'https://uploads.factorio.com/?token=private-capability'})
+            error = publish.urllib.error.HTTPError(
+                'https://mods.factorio.com/api/v2/mods/init_publish',
+                400, 'Bad request', {}, io.BytesIO(body.encode()))
+            client = publish.Client()
+            with self.subTest(code=code), mock.patch.object(client.opener, 'open', side_effect=error):
+                with self.assertRaises(publish.PublishError) as raised:
+                    client.request('https://mods.factorio.com/api/v2/mods/init_publish',
+                                   b'mod=factory-telemetry-bridge',
+                                   {'Authorization': 'Bearer private-auth-value'})
+            message = str(raised.exception)
+            self.assertIn('HTTP error 400', message)
+            self.assertIn('during init_publish', message)
+            if code in publish.API_ERROR_CODES:
+                self.assertIn('(' + code + ')', message)
+            for private in ('private-response-value', 'private-capability',
+                            'private-auth-value', 'sensitive-dummy-value'):
+                self.assertNotIn(private, message)
 
 
 if __name__ == '__main__':
