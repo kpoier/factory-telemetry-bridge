@@ -1,0 +1,14 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.6.0
+Date: 2026-10-29
+  Features:
+    - Prepare Factory Telemetry Bridge for standalone source distribution.
+    - Add English and Traditional Chinese setting names and descriptions.
+  Changes:
+    - Preserve the Factorio 2.1.23 runtime implementation from local version 0.5.100.
+    - Clarify that telemetry is accompanied by administrator pause and save controls.
+    - Add reproducible packaging, checks and Mod Portal publishing automation.
+  Compatibility:
+    - Requires Factorio 2.1.23 or newer within the 2.1 series.
+    - Multiplayer clients must install the same mod version as the server.
+    - Existing periodic telemetry sampling and its performance cost are unchanged.

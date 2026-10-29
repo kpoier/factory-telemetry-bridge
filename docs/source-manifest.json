@@ -1,0 +1,12 @@
+{
+  "source_version": "0.5.100",
+  "source_archive_sha256": "f372c7e718f68d94e1591f6ec77b9346e4c229c3c1d69747fc40728ce5fbdd31",
+  "files": {
+    "map_detail.lua": "1c60ad35371ff792a3acf5bc83987b08fd4dec9de962fc3805b2a67259aab61d",
+    "control.lua": "607ec0e4297fa0f427a0a33c92d3b41e5acdcf98d655bb21c8632bda9d989179",
+    "context_export.lua": "e4e401e584c3b16404969b964e8745fcfbbdf5ad05fb03d85edfa1291b13221f",
+    "pause.lua": "b405f1b548eac13cb64803833e7c19c8acc11b65128c503885de1bb45d46b2f1",
+    "settings.lua": "07abad61ca076fdca88c2653ffbdfde0f7a0e5d00972c2505af8dd832d7326a6",
+    "info.json": "9a83a0123870ded64c91dcb1fe5a43d3840233d033a5d7c6f009e1327f54bca2"
+  }
+}

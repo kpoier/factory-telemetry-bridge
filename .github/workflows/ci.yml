@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install Lua syntax checker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.2
+      - name: Validate release metadata and scripts
+        run: |
+          python3 scripts/build.py --check
+          python3 -m unittest discover -s tests -v
+          find mod -name '*.lua' -print0 | xargs -0 -r -n1 luac -p
+      - name: Package mod
+        run: python3 scripts/build.py --output dist
+      - name: Download official headless engine
+        run: |
+          mkdir -p .tools/factorio
+          curl --fail --location --retry 3 --proto '=https' --proto-redir '=https' \
+            https://factorio.com/get-download/2.1.23/headless/linux64 \
+            --output .tools/factorio.tar.xz
+          tar -xJf .tools/factorio.tar.xz -C .tools/factorio --strip-components=1
+      - name: Test telemetry on a new isolated world
+        run: python3 scripts/smoke_test.py --factorio .tools/factorio/bin/x64/factorio
+      - name: Save release candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: factory-telemetry-bridge-candidate
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

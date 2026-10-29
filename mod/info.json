@@ -1,0 +1,12 @@
+{
+  "name": "factory-telemetry-bridge",
+  "version": "0.6.0",
+  "title": "Factory Telemetry Bridge",
+  "author": "kpoier",
+  "factorio_version": "2.1",
+  "dependencies": [
+    "base >= 2.1.23"
+  ],
+  "description": "Factory telemetry, bounded map and blueprint exports for external tools, with administrator pause and save controls. Requires an external consumer; multiplayer clients must install the same version.",
+  "homepage": "https://github.com/kpoier/factory-telemetry-bridge"
+}

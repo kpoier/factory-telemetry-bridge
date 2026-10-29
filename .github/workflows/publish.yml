@@ -1,0 +1,60 @@
+name: Publish mod
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'first creates the Portal entry; update uploads a new version'
+        required: true
+        type: choice
+        default: update
+        options: [update, first]
+      tag:
+        description: 'Version tag, e.g. v0.6.0; first mode bootstraps before creating the tag'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factorio-mod-portal-publish
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'update' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Validate version and selected source commit
+        run: |
+          python3 scripts/build.py --check --tag "$RELEASE_TAG"
+          if [ "$PUBLISH_MODE" != first ]; then
+            git fetch --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{commit}")"
+          fi
+      - name: Build verified package
+        run: python3 scripts/build.py --output dist
+      - name: Publish to Factorio Mod Portal
+        env:
+          FACTORIO_MOD_PORTAL_API_KEY: ${{ secrets.FACTORIO_MOD_PORTAL_API_KEY }}
+          SOURCE_URL: https://github.com/${{ github.repository }}
+        run: |
+          archive="$(python3 -c 'import json; d=json.load(open("mod/info.json")); print("dist/"+d["name"]+"_"+d["version"]+".zip")')"
+          python3 scripts/publish.py --mode "$PUBLISH_MODE" --tag "$RELEASE_TAG" \
+            --archive "$archive" --source-url "$SOURCE_URL"
